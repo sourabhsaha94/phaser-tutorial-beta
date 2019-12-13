@@ -23,6 +23,7 @@ var PLAYER_VELOCITY_X = 250;
 var PLAYER_VELOCITY_Y = 500;
 var PLAYER_START_X = 100;
 var PLAYER_START_Y = 450;
+var PLAYER_GRAVITY_Y = 500;
 
 // preloads the assets with key-value pairing
 function preload ()
@@ -39,13 +40,17 @@ function preload ()
 // creates the scene, run only once
 function create ()
 {
+
+    // console.log(this);
     this.add.image(400,300,'sky');
 
 // platform
+    ground = this.physics.add.staticGroup();
+    ground.create(400, 568, 'ground').setScale(2).refreshBody();
+
     platforms = this.physics.add.staticGroup();
-    platforms.create(400, 568, 'ground').setScale(2).refreshBody();
     platforms.create(600,400,'ground');
-    platforms.create(50,250,'ground');
+    platforms.create(50,350,'ground');
     platforms.create(750,220,'ground');
 
 // stars
@@ -55,7 +60,7 @@ function create ()
         setXY: { x: 12, y: 0, stepX:70 }
     });
     stars.children.iterate(function (child) {
-        child.setBounceY(Phaser.Math.FloatBetween(0.4,0.8));
+        createStar(child);
     });
 
 // bomb
@@ -65,7 +70,9 @@ function create ()
     player = this.physics.add.sprite(PLAYER_START_X,PLAYER_START_Y,'dude');
     player.setBounce(0.2);
     player.setCollideWorldBounds(true);
-    player.body.setGravityY(300);
+    player.body.setGravityY(PLAYER_GRAVITY_Y);
+//reduce collision box size to have more realistic collisions
+    player.body.setSize(player.getBounds().width-5, player.getBounds().height-5);
 
 // animations
     this.anims.create({
@@ -92,16 +99,23 @@ function create ()
     this.physics.add.collider(player,platforms);
     this.physics.add.collider(stars, platforms);
     this.physics.add.collider(bombs, platforms);
+    this.physics.add.collider(player,ground);
+    this.physics.add.collider(stars, ground);
+    this.physics.add.collider(bombs, ground);
     this.physics.add.overlap(player, stars, collectStar, null, this);
     this.physics.add.overlap(player, bombs, hitBomb, null, this);
 
 // input
     cursors = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on('keydown-R', restartGame, this);
+    this.input.keyboard.on('keydown-D', restartGame, this); // debug to restart the scene
 
 // score
-    scoreText = this.add.text(16, 16, 'Score: 0', {fontSize: '32px', fill: '#000'});
+    scoreText = this.add.text(16, 16, 'Score: 0\nCollect the starts and avoid the Bombs!', {fontSize: '32px', fill: '#000'});
     gameOver = false;
+
+// create the Bomb
+    createBomb(player);
 }
 
 // callback to execute when star is collected
@@ -110,20 +124,34 @@ function collectStar (player, star)
     star.disableBody(true, true);
     score += 10;
     scoreText.setText('Score: ' + score);
-
     if(stars.countActive(true) === 0)
     {
         stars.children.iterate(function (child) {
             child.enableBody(true, child.x, 0, true,true);
+            createStar(child);
         });
 
-        var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0,400);
-
-        var bomb = bombs.create(x, 16, 'bomb');
-        bomb.setBounce(1);
-        bomb.setCollideWorldBounds(true);
-        bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+       createBomb(player);
     }
+}
+
+// helper function to create bomb
+function createBomb (Player)
+{
+     var x = (Player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0,400);
+
+    var bomb = bombs.create(x, 16, 'bomb');
+    bomb.setBounce(1);
+    bomb.setCollideWorldBounds(true);
+    bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+}
+
+// helper function to create star
+function createStar (Star)
+{
+    Star.setVelocity(Phaser.Math.FloatBetween(-200,200));
+    Star.setBounce(1);
+    Star.setCollideWorldBounds(true); 
 }
 
 // callback to execute when bomb is touched
@@ -137,7 +165,7 @@ function hitBomb (player, bomb)
 
 // callback to restart the game
 function restartGame (event){
-    if (gameOver) 
+    if (gameOver || event.key === "d") 
     {
         score = 0;
         this.scene.restart();
