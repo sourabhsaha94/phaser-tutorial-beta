@@ -23,7 +23,7 @@ var PLAYER_VELOCITY_X = 250;
 var PLAYER_VELOCITY_Y = 500;
 var PLAYER_START_X = 100;
 var PLAYER_START_Y = 450;
-var PLAYER_GRAVITY_Y = 500;
+var PLAYER_GRAVITY_Y = 300;
 
 // preloads the assets with key-value pairing
 function preload ()
@@ -51,6 +51,7 @@ function create ()
     platforms = this.physics.add.staticGroup();
     platforms.create(600,400,'ground');
     platforms.create(50,350,'ground');
+    platforms.create(150,150,'ground');
     platforms.create(750,220,'ground');
 
 // stars
