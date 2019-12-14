@@ -17,7 +17,7 @@ var config = {
 };
 
 var game = new Phaser.Game(config);
-var score = 0, scoreText;
+var score = 0, previousScore = 0, scoreText;
 var gameOver;
 var PLAYER_VELOCITY_X = 250;
 var PLAYER_VELOCITY_Y = 500;
@@ -127,7 +127,7 @@ function collectStar (player, star)
 {
     star.disableBody(true, true);
     score += 10;
-    scoreText.setText('Score: ' + score);
+    scoreText.setText('Score: ' + score + '\t\tLast Score: ' + previousScore);
     if(stars.countActive(true) === 0)
     {
         stars.children.iterate(function (child) {
@@ -165,15 +165,28 @@ function hitBomb (player, bomb)
     player.setTint(0xff0000);
     player.anims.play('turn');
     gameOver = true;
+    addScoreToLeaderBoard(score);
 }
 
 // callback to restart the game
-function restartGame (event){
+function restartGame (event)
+{
     if (gameOver || event.key === "d") 
     {
         score = 0;
         this.scene.restart();
     }
+}
+
+function addScoreToLeaderBoard (Score)
+{
+    previousScore = score;
+    // var leaderBoard = document.getElementById("leaderboard");
+    // var li = document.createElement("li");
+    // var text = document.createTextNode(""+score);
+    // li.appendChild(text);
+    // leaderBoard.appendChild(li);
+    // console.log(leaderBoard.children);
 }
 
 // update loop [Main game loop]
