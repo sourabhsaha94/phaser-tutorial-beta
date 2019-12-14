@@ -23,7 +23,10 @@ var PLAYER_VELOCITY_X = 250;
 var PLAYER_VELOCITY_Y = 500;
 var PLAYER_START_X = 100;
 var PLAYER_START_Y = 450;
-var PLAYER_GRAVITY_Y = 300;
+var PLAYER_GRAVITY_Y = 1000;
+var jump = false;
+var JUMP_TIMER = 0;
+
 
 // preloads the assets with key-value pairing
 function preload ()
@@ -192,10 +195,29 @@ function update ()
         player.anims.play('turn');
     }
 
-    if (cursors.up.isDown && player.body.touching.down)
+    if (cursors.up.isDown)
+    {
+        jump = true;
+    }
+
+    if (player.body.touching.down)
+    {
+        JUMP_TIMER = this.time.now;
+    }
+
+    if (jump && this.time.now - JUMP_TIMER < 400)
     {
         player.setVelocityY(-PLAYER_VELOCITY_Y);
     }
+    else
+    {
+        jump = false;
+    }
+
+    if (cursors.up.isUp)
+    {
+        jump = false;
+    }          
 
     if (gameOver === true)
     {
