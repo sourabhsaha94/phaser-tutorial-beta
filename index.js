@@ -16,8 +16,9 @@ var config = {
     }
 };
 
+const SCORE_BUCKET_SECRET_KEY = "337gu3nb";
 var game = new Phaser.Game(config);
-var score = 0, previousScore = 0, scoreText;
+var score = 0, previousScore = 0, globalScore = 0, scoreText;
 var gameOver;
 var PLAYER_VELOCITY_X = 250;
 var PLAYER_VELOCITY_Y = 500;
@@ -44,7 +45,7 @@ function preload ()
 function create ()
 {
 
-    // console.log(this);
+// console.log(this);
     this.add.image(400,300,'sky');
 
 // platform
@@ -115,11 +116,25 @@ function create ()
     this.input.keyboard.on('keydown-D', restartGame, this); // debug to restart the scene
 
 // score
-    scoreText = this.add.text(16, 16, 'Score: 0\nCollect the starts and avoid the Bombs!', {fontSize: '32px', fill: '#000'});
+    scoreText = this.add.text(16, 16, 'Score: 0\nCollect the starts and avoid the Bombs!', {fontSize: '18px', fill: '#000'});
     gameOver = false;
+
+    $.ajax({
+        url: "https://keyvalue.immanuel.co/api/KeyVal/GetValue/337gu3nb/globalScore",
+        type: "GET",
+        success: updateGlobalScore,
+        error: function (error) {
+            console.log ("Error getting score");
+        }
+    });
 
 // create the Bomb
     createBomb(player);
+}
+
+function updateGlobalScore (result)
+{
+    globalScore = result;
 }
 
 // callback to execute when star is collected
@@ -127,7 +142,7 @@ function collectStar (player, star)
 {
     star.disableBody(true, true);
     score += 10;
-    scoreText.setText('Score: ' + score + '\t\tLast Score: ' + previousScore);
+    scoreText.setText('Score: ' + score + '\tLast Score: ' + previousScore + '\tGlobal Highscore: ' + globalScore);
     if(stars.countActive(true) === 0)
     {
         stars.children.iterate(function (child) {
@@ -181,12 +196,20 @@ function restartGame (event)
 function addScoreToLeaderBoard (Score)
 {
     previousScore = score;
-    // var leaderBoard = document.getElementById("leaderboard");
-    // var li = document.createElement("li");
-    // var text = document.createTextNode(""+score);
-    // li.appendChild(text);
-    // leaderBoard.appendChild(li);
-    // console.log(leaderBoard.children);
+    if (score > globalScore)
+    {
+        globalScore = score;
+        $.ajax({
+            url: "https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/337gu3nb/globalScore/" + globalScore,
+            type: "POST",
+            success: function (data) {
+                console.log ("Updated successfully");
+            },
+            error: function (error) {
+                console.log ("Error getting score");
+            }
+        });
+    }
 }
 
 // update loop [Main game loop]
