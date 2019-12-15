@@ -51,9 +51,8 @@ function create ()
 // platform
     platforms = this.physics.add.group();
     platforms.create(400, 568, 'ground');
-    platforms.create(50,300,'ground');
-    platforms.create(350,150,'ground');
-    platforms.create(750,420,'ground');
+    platforms.create(50,370,'ground');
+    platforms.create(350,200,'ground');
     platforms.children.iterate(function (child) {
         createPlatform(child);
     });
@@ -171,13 +170,13 @@ function createBomb (Player)
 // helper function to create star
 function createStar (Star)
 {
-    Star.setVelocity(Phaser.Math.FloatBetween(-200,200));
+    Star.setVelocity(Phaser.Math.FloatBetween(-100,100));
     Star.setBounce(1);
     Star.setCollideWorldBounds(true); 
 }
 
 // helper function to create moving platform
-function createPlatform (Platform)
+function createPlatform (Platform, movable)
 {
     Platform.body.allowGravity = false;
     Platform.body.setImmovable(true);
