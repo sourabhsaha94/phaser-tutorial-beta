@@ -21,6 +21,8 @@ const GREEN_TINT = 0x339cff;
 const RED_TINT = 0xff3368;
 const GOLDEN_TINT = 0xfcff33;
 const BLACK_TINT = 0x000000;
+
+var background_sound, jump_sound, collectStar_sound, death_sound;
 var game = new Phaser.Game(config);
 var score = 0, previousScore = 0, globalScore = 0, scoreText;
 var gameOver;
@@ -46,7 +48,14 @@ function preload ()
     this.load.image('bomb','./assets/bomb.png');
     this.load.spritesheet('dude','./assets/dude.png',
         { frameWidth: 32, frameHeight: 48 }
-    );  
+    );
+    this.load.audio('background','./assets/soundtrack.mp3');  
+    this.load.audio('jumpSound1','./assets/Jump_00.mp3');
+    this.load.audio('jumpSound2','./assets/Jump_01.mp3');
+    this.load.audio('jumpSound3','./assets/Jump_02.mp3');
+    this.load.audio('jumpSound4','./assets/Jump_03.mp3');
+    this.load.audio('collectStarSound','./assets/Collect_Point_00.mp3');
+    this.load.audio('heroDeathSound','./assets/Hero_Death_00.mp3');
 }
 
 // creates the scene, run only once
@@ -119,7 +128,7 @@ function create ()
 // input
     cursors = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on('keydown', restartGame, this);
-    this.input.keyboard.on('keydown-D', restartGame, this); // debug to restart the scene
+    this.input.keyboard.on('keydown-UP', playJumpSound, this);
 
 // score
     scoreText = this.add.text(16, 16, 'Score: 0\nCollect the starts and avoid the Bombs!', {fontSize: '18px', fill: '#000'});
@@ -138,6 +147,13 @@ function create ()
     createBomb(player);
     SLOW_TIME = false;
     GOD_MODE = false;
+
+// cue music
+    background_sound = this.sound.add('background');
+    background_sound.play({ volume: 0.5, loop: true});
+    collectStar_sound = this.sound.add('collectStarSound');
+    jump_sound = this.sound.add('jumpSound2');
+    death_sound = this.sound.add('heroDeathSound');
 }
 
 function worldCollideCallback (gameObject, up, down, left, right)
@@ -148,8 +164,15 @@ function worldCollideCallback (gameObject, up, down, left, right)
         gameObject.gameObject.setTint(0xff0000);
         gameObject.gameObject.anims.play('turn');
         gameOver = true;
+        death_sound.play({volume: 0.5});
         addScoreToLeaderBoard(score);
     }
+}
+
+// callback to play jump sound
+function playJumpSound ()
+{
+    jump_sound.play({volume: 0.2});
 }
 
 function updateGlobalScore (result)
@@ -161,7 +184,7 @@ function updateGlobalScore (result)
 function collectStar (player, star)
 {
     star.disableBody(true, true);
-    
+    collectStar_sound.play({volume: 0.4});   
     if(!GOD_MODE && star.getData("powerUp") === "GOD_MODE")
     {
         enableGodMode(this);
@@ -210,7 +233,7 @@ function createBomb (Player)
     var x = (Player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0,400);
     var bomb = bombs.create(x, 16, 'bomb');
     bomb.body.allowGravity = false;
-    bomb.setBounce(1);
+    bomb.setBounce(0.9);
     bomb.setCollideWorldBounds(true);
     bomb.setVelocity(Phaser.Math.RND.sign()*Phaser.Math.RND.integerInRange(100,200));
 }
@@ -220,10 +243,10 @@ function createStar (Star, context)
 {
     Star.body.allowGravity = false;
     Star.setVelocity(Phaser.Math.RND.sign()*Phaser.Math.RND.integerInRange(100,200));
-    Star.setBounce(1);
+    Star.setBounce(0.9);
     Star.setCollideWorldBounds(true);
 
-    let powerUpProbability = Phaser.Math.RND.integerInRange(1,20);
+    let powerUpProbability = Phaser.Math.RND.integerInRange(1,25);
 
     if (powerUpProbability === 5)
     {
@@ -264,6 +287,7 @@ function hitBomb (player, bomb)
         player.setTint(0xff0000);
         player.anims.play('turn');
         gameOver = true;
+        death_sound.play({volume: 0.5});
         addScoreToLeaderBoard(score);
     }
 }
@@ -296,20 +320,24 @@ function slowTime (context)
     SLOW_TIME = true;
 
     stars.children.iterate(function (child) {
+        child.setData("slowDown",true);
         child.body.velocity.x /= 5;
         child.body.velocity.y /= 5;
     });
 
     bombs.children.iterate(function (child) {
+        child.setData("slowDown",true);
         child.body.velocity.x /= 5;
         child.body.velocity.y /= 5;
     });
 
     platforms.children.iterate(function (child) {
+        child.setData("slowDown",true);
         child.body.velocity.x /= 5;
         child.body.velocity.y /= 5;
     });
     
+    background_sound.setRate(0.5);
     context.time.delayedCall(5000, normalTime);
 }
 
@@ -319,19 +347,33 @@ function normalTime ()
     SLOW_TIME = false;
 
     stars.children.iterate(function (child) {
-        child.body.velocity.x *= 5;
-        child.body.velocity.y *= 5;
+        if(child.getData("slowDown"))
+        {
+            child.body.velocity.x *= 5;
+            child.body.velocity.y *= 5;
+        }
+        child.setData("slowDown",false);
     });
 
     bombs.children.iterate(function (child) {
-        child.body.velocity.x *= 5;
-        child.body.velocity.y *= 5;
+        if(child.getData("slowDown"))
+        {
+            child.body.velocity.x *= 5;
+            child.body.velocity.y *= 5;
+        }
+        child.setData("slowDown",false);
     });
 
     platforms.children.iterate(function (child) {
-        child.body.velocity.x *= 5;
-        child.body.velocity.y *= 5;
+        if(child.getData("slowDown"))
+        {
+            child.body.velocity.x *= 5;
+            child.body.velocity.y *= 5;
+        }
+        child.setData("slowDown",false);
     });
+
+    background_sound.setRate(1);
 }
 
 // callback to disable super star
@@ -348,9 +390,10 @@ function disableSuperStar ()
 // callback to restart the game
 function restartGame (event)
 {
-    if (gameOver || event.key === "d") 
+    if (gameOver) 
     {
         score = 0;
+        background_sound.stop();
         this.scene.restart();
     }
 }
@@ -418,6 +461,7 @@ function update ()
 
     if (gameOver === true)
     {
+        background_sound.stop();
         scoreText.setText('Final Score is ' + score + ' Press Any Key to Restart\t' + 'Global Highscore: ' + globalScore);
     }
 }
