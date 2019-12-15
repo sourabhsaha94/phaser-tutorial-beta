@@ -17,6 +17,10 @@ var config = {
 };
 
 const SCORE_BUCKET_SECRET_KEY = "337gu3nb";
+const GREEN_TINT = 0x339cff;
+const RED_TINT = 0xff3368;
+const GOLDEN_TINT = 0xfcff33;
+const BLACK_TINT = 0x000000;
 var game = new Phaser.Game(config);
 var score = 0, previousScore = 0, globalScore = 0, scoreText;
 var gameOver;
@@ -25,8 +29,12 @@ var PLAYER_VELOCITY_Y = 500;
 var PLAYER_START_X = 400;
 var PLAYER_START_Y = 500;
 var PLAYER_GRAVITY_Y = 1000;
+var PLATFORM_SPEED = 100;
+var PLATFORM_SPEED_SLOW = 10;
 var jump = false;
 var JUMP_TIMER = 0;
+var GOD_MODE = false;
+var SLOW_TIME = false;
 
 
 // preloads the assets with key-value pairing
@@ -50,7 +58,7 @@ function create ()
 
 // platform
     platforms = this.physics.add.group();
-    platforms.create(400, 568, 'ground');
+    platforms.create(400, 588, 'ground');
     platforms.create(50,370,'ground');
     platforms.create(350,200,'ground');
     platforms.children.iterate(function (child) {
@@ -64,8 +72,8 @@ function create ()
         setXY: { x: 12, y: 0, stepX:70 }
     });
     stars.children.iterate(function (child) {
-        createStar(child);
-    });
+        createStar(child, this);
+    }, this);
 
 // bomb
     bombs = this.physics.add.group();
@@ -77,7 +85,7 @@ function create ()
     player.body.onWorldBounds = true;
     player.body.setGravityY(PLAYER_GRAVITY_Y);
 //reduce collision box size to have more realistic collisions
-    player.body.setSize(player.getBounds().width-5, player.getBounds().height-5);
+    player.setSize(player.getBounds().width-25, player.getBounds().height-10);
 
 // animations
     this.anims.create({
@@ -110,7 +118,7 @@ function create ()
 
 // input
     cursors = this.input.keyboard.createCursorKeys();
-    this.input.keyboard.on('keydown-R', restartGame, this);
+    this.input.keyboard.on('keydown', restartGame, this);
     this.input.keyboard.on('keydown-D', restartGame, this); // debug to restart the scene
 
 // score
@@ -128,6 +136,8 @@ function create ()
 
 // create the Bomb
     createBomb(player);
+    SLOW_TIME = false;
+    GOD_MODE = false;
 }
 
 function worldCollideCallback (gameObject, up, down, left, right)
@@ -151,16 +161,40 @@ function updateGlobalScore (result)
 function collectStar (player, star)
 {
     star.disableBody(true, true);
+    
+    if(!GOD_MODE && star.getData("powerUp") === "GOD_MODE")
+    {
+        enableGodMode(this);
+    }
+    else if(!SLOW_TIME && star.getData("powerUp") === "SLOW_TIME")
+    {
+        slowTime(this);
+    }
+
+    if (star.getData("powerUp") === "SUPER_STAR")
+    {
+        score += 20;
+    }
+
     score += 10;
     scoreText.setText('Score: ' + score + '\tLast Score: ' + previousScore + '\tGlobal Highscore: ' + globalScore);
+
+    // level over
     if(stars.countActive(true) === 0)
     {
+        if (SLOW_TIME)
+        {
+            normalTime();
+        }
+        if (GOD_MODE)
+        {    
+            disableGodMode();
+        }
         stars.children.iterate(function (child) {
             child.enableBody(true, child.x, 0, true,true);
-            createStar(child);
-        });
-
-       createBomb(player);
+            createStar(child, this);
+        }, this);
+        createBomb(player);
     }
 }
 
@@ -175,17 +209,39 @@ function createBomb (Player)
 {
     var x = (Player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0,400);
     var bomb = bombs.create(x, 16, 'bomb');
+    bomb.body.allowGravity = false;
     bomb.setBounce(1);
     bomb.setCollideWorldBounds(true);
-    bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+    bomb.setVelocity(Phaser.Math.RND.sign()*Phaser.Math.RND.integerInRange(100,200));
 }
 
 // helper function to create star
-function createStar (Star)
+function createStar (Star, context)
 {
-    Star.setVelocity(Phaser.Math.FloatBetween(-100,100));
+    Star.body.allowGravity = false;
+    Star.setVelocity(Phaser.Math.RND.sign()*Phaser.Math.RND.integerInRange(100,200));
     Star.setBounce(1);
-    Star.setCollideWorldBounds(true); 
+    Star.setCollideWorldBounds(true);
+
+    let powerUpProbability = Phaser.Math.RND.integerInRange(1,20);
+
+    if (powerUpProbability === 5)
+    {
+        Star.setTint(GREEN_TINT);
+        Star.setData("powerUp","SLOW_TIME");
+    }
+    else if (powerUpProbability === 6)
+    {
+        Star.setTint(RED_TINT);
+        Star.setData("powerUp","GOD_MODE");
+    }
+    else if (powerUpProbability === 7)
+    {
+        Star.setTint(BLACK_TINT);
+        Star.setData("powerUp","SUPER_STAR");
+        Star.setVelocity(Phaser.Math.RND.sign()*300);
+        context.time.delayedCall(10000, disableSuperStar, null, context);
+    }
 }
 
 // helper function to create moving platform
@@ -195,19 +251,99 @@ function createPlatform (Platform, movable)
     Platform.body.setImmovable(true);
     Platform.body.setBounceX(1);
     Platform.body.setCollideWorldBounds(true);
-    Platform.displayWidth = 300;
-    Platform.body.setVelocityX(Phaser.Math.RND.sign()*100);
+    Platform.displayWidth = 350;
+    Platform.body.setVelocityX(Phaser.Math.RND.sign()*PLATFORM_SPEED);
 }
 
 // callback to execute when bomb is touched
 function hitBomb (player, bomb)
 {
-    this.physics.pause();
-    player.setTint(0xff0000);
-    player.anims.play('turn');
-    gameOver = true;
-    addScoreToLeaderBoard(score);
+    if(!GOD_MODE)
+    {
+        this.physics.pause();
+        player.setTint(0xff0000);
+        player.anims.play('turn');
+        gameOver = true;
+        addScoreToLeaderBoard(score);
+    }
 }
+
+// helper function for god mode
+function enableGodMode (context)
+{
+    GOD_MODE = true;
+    player.setTint(GOLDEN_TINT);
+    bombs.children.iterate(function (child){
+        child.setAlpha(0.2);
+    });
+    context.time.delayedCall(5000, disableGodMode);
+}
+
+// helper function to disable god mode
+function disableGodMode ()
+{
+    GOD_MODE = false;
+    player.clearTint();
+    bombs.children.iterate(function (child){
+        child.clearAlpha();
+    });
+}
+
+// helper function to slow time
+function slowTime (context)
+{
+
+    SLOW_TIME = true;
+
+    stars.children.iterate(function (child) {
+        child.body.velocity.x /= 5;
+        child.body.velocity.y /= 5;
+    });
+
+    bombs.children.iterate(function (child) {
+        child.body.velocity.x /= 5;
+        child.body.velocity.y /= 5;
+    });
+
+    platforms.children.iterate(function (child) {
+        child.body.velocity.x /= 5;
+        child.body.velocity.y /= 5;
+    });
+    
+    context.time.delayedCall(5000, normalTime);
+}
+
+// helper function to normal time
+function normalTime ()
+{
+    SLOW_TIME = false;
+
+    stars.children.iterate(function (child) {
+        child.body.velocity.x *= 5;
+        child.body.velocity.y *= 5;
+    });
+
+    bombs.children.iterate(function (child) {
+        child.body.velocity.x *= 5;
+        child.body.velocity.y *= 5;
+    });
+
+    platforms.children.iterate(function (child) {
+        child.body.velocity.x *= 5;
+        child.body.velocity.y *= 5;
+    });
+}
+
+// callback to disable super star
+function disableSuperStar ()
+{
+    stars.children.iterate(function(child) {
+        if (child.active && child.getData("powerUp") === "SUPER_STAR"){
+            child.disableBody(true,true);
+        }
+    });
+}
+
 
 // callback to restart the game
 function restartGame (event)
@@ -282,6 +418,6 @@ function update ()
 
     if (gameOver === true)
     {
-        scoreText.setText('Final Score is ' + score + ' Press R to Restart\t' + 'Global Highscore: ' + globalScore);
+        scoreText.setText('Final Score is ' + score + ' Press Any Key to Restart\t' + 'Global Highscore: ' + globalScore);
     }
 }
