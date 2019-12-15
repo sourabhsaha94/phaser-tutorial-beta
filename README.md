@@ -12,3 +12,4 @@
     - `git remote add beta https://sourabhsaha94.github.io/phaser-tutorial-beta/`
 2. First push to beta by `git push beta <local-branch>:master`
 3. After testing, push to production by `git push origin <local-branch>:master`
+4. Always work from a branch <b>other</b> than master branch
