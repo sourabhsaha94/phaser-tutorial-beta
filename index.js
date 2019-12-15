@@ -282,6 +282,6 @@ function update ()
 
     if (gameOver === true)
     {
-        scoreText.setText('Final Score is ' + score + ' Press R to Restart');
+        scoreText.setText('Final Score is ' + score + ' Press R to Restart\t' + 'Global Highscore: ' + globalScore);
     }
 }
