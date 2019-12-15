@@ -73,7 +73,8 @@ function create ()
 // player
     player = this.physics.add.sprite(PLAYER_START_X,PLAYER_START_Y,'dude');
     player.setBounce(0.2);
-    player.setCollideWorldBounds(true);
+    player.body.collideWorldBounds = true;
+    player.body.onWorldBounds = true;
     player.body.setGravityY(PLAYER_GRAVITY_Y);
 //reduce collision box size to have more realistic collisions
     player.body.setSize(player.getBounds().width-5, player.getBounds().height-5);
@@ -105,6 +106,7 @@ function create ()
     this.physics.add.collider(bombs, platforms);
     this.physics.add.overlap(player, stars, collectStar, null, this);
     this.physics.add.overlap(player, bombs, hitBomb, null, this);
+    this.physics.world.on('worldbounds', worldCollideCallback);
 
 // input
     cursors = this.input.keyboard.createCursorKeys();
@@ -126,6 +128,18 @@ function create ()
 
 // create the Bomb
     createBomb(player);
+}
+
+function worldCollideCallback (gameObject, up, down, left, right)
+{
+    if(down)
+    {
+        gameObject.world.scene.physics.pause();
+        gameObject.gameObject.setTint(0xff0000);
+        gameObject.gameObject.anims.play('turn');
+        gameOver = true;
+        addScoreToLeaderBoard(score);
+    }
 }
 
 function updateGlobalScore (result)
@@ -159,8 +173,7 @@ function matchPlatformSpeed (player, platform)
 // helper function to create bomb
 function createBomb (Player)
 {
-     var x = (Player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0,400);
-
+    var x = (Player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0,400);
     var bomb = bombs.create(x, 16, 'bomb');
     bomb.setBounce(1);
     bomb.setCollideWorldBounds(true);
