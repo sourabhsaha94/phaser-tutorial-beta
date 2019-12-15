@@ -22,8 +22,8 @@ var score = 0, previousScore = 0, globalScore = 0, scoreText;
 var gameOver;
 var PLAYER_VELOCITY_X = 250;
 var PLAYER_VELOCITY_Y = 500;
-var PLAYER_START_X = 100;
-var PLAYER_START_Y = 450;
+var PLAYER_START_X = 400;
+var PLAYER_START_Y = 500;
 var PLAYER_GRAVITY_Y = 1000;
 var jump = false;
 var JUMP_TIMER = 0;
@@ -49,14 +49,14 @@ function create ()
     this.add.image(400,300,'sky');
 
 // platform
-    ground = this.physics.add.staticGroup();
-    ground.create(400, 568, 'ground').setScale(2).refreshBody();
-
-    platforms = this.physics.add.staticGroup();
-    platforms.create(600,400,'ground');
+    platforms = this.physics.add.group();
+    platforms.create(400, 568, 'ground');
     platforms.create(50,350,'ground');
-    platforms.create(150,150,'ground');
+    platforms.create(350,150,'ground');
     platforms.create(750,220,'ground');
+    platforms.children.iterate(function (child) {
+        createPlatform(child);
+    });
 
 // stars
     stars = this.physics.add.group({
@@ -101,12 +101,9 @@ function create ()
     });
 
 // colliders
-    this.physics.add.collider(player,platforms);
+    this.physics.add.collider(player,platforms, matchPlatformSpeed, null, this);
     this.physics.add.collider(stars, platforms);
     this.physics.add.collider(bombs, platforms);
-    this.physics.add.collider(player,ground);
-    this.physics.add.collider(stars, ground);
-    this.physics.add.collider(bombs, ground);
     this.physics.add.overlap(player, stars, collectStar, null, this);
     this.physics.add.overlap(player, bombs, hitBomb, null, this);
 
@@ -154,6 +151,12 @@ function collectStar (player, star)
     }
 }
 
+// callback to match speed of player and platform
+function matchPlatformSpeed (player, platform)
+{
+    player.body.velocity.x = platform.body.velocity.x;
+}
+
 // helper function to create bomb
 function createBomb (Player)
 {
@@ -171,6 +174,17 @@ function createStar (Star)
     Star.setVelocity(Phaser.Math.FloatBetween(-200,200));
     Star.setBounce(1);
     Star.setCollideWorldBounds(true); 
+}
+
+// helper function to create moving platform
+function createPlatform (Platform)
+{
+    Platform.body.allowGravity = false;
+    Platform.body.setImmovable(true);
+    Platform.body.setBounceX(1);
+    Platform.body.setCollideWorldBounds(true);
+    Platform.displayWidth = Phaser.Math.FloatBetween(100,300);
+    Platform.body.setVelocityX(Phaser.Math.FloatBetween(10,100));
 }
 
 // callback to execute when bomb is touched
@@ -227,7 +241,6 @@ function update ()
     }
     else
     {
-        player.setVelocityX(0);
         player.anims.play('turn');
     }
 
