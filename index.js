@@ -51,9 +51,9 @@ function create ()
 // platform
     platforms = this.physics.add.group();
     platforms.create(400, 568, 'ground');
-    platforms.create(50,350,'ground');
+    platforms.create(50,300,'ground');
     platforms.create(350,150,'ground');
-    platforms.create(750,220,'ground');
+    platforms.create(750,420,'ground');
     platforms.children.iterate(function (child) {
         createPlatform(child);
     });
@@ -183,8 +183,8 @@ function createPlatform (Platform)
     Platform.body.setImmovable(true);
     Platform.body.setBounceX(1);
     Platform.body.setCollideWorldBounds(true);
-    Platform.displayWidth = Phaser.Math.FloatBetween(100,300);
-    Platform.body.setVelocityX(Phaser.Math.FloatBetween(10,100));
+    Platform.displayWidth = 300;
+    Platform.body.setVelocityX(Phaser.Math.RND.sign()*100);
 }
 
 // callback to execute when bomb is touched
