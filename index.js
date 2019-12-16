@@ -288,7 +288,9 @@ function createStar (Star, context)
         Star.setData("powerUp","SUPER_STAR");
         Star.setVelocity(Phaser.Math.RND.sign()*300);
         SUPER_STAR_PRESENT = true;
-        context.time.delayedCall(10000, disableSuperStar, null, context);
+        let callbackArgs = [];
+        callbackArgs.push(Star);
+        context.time.delayedCall(10000, disableSuperStar, callbackArgs, context);
     }
 }
 
@@ -402,13 +404,9 @@ function normalTime ()
 }
 
 // callback to disable super star
-function disableSuperStar ()
+function disableSuperStar (Star)
 {
-    stars.children.iterate(function(child) {
-        if (child.active && child.getData("powerUp") === "SUPER_STAR"){
-            child.disableBody(true,true);
-        }
-    });
+    Star.disableBody(true,true);
 }
 
 
