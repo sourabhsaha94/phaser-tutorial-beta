@@ -52,10 +52,7 @@ function preload ()
         { frameWidth: 32, frameHeight: 48 }
     );
     this.load.audio('background','./assets/soundtrack.mp3');  
-    this.load.audio('jumpSound1','./assets/Jump_00.mp3');
     this.load.audio('jumpSound2','./assets/Jump_01.mp3');
-    this.load.audio('jumpSound3','./assets/Jump_02.mp3');
-    this.load.audio('jumpSound4','./assets/Jump_03.mp3');
     this.load.audio('collectStarSound','./assets/Collect_Point_00.mp3');
     this.load.audio('heroDeathSound','./assets/Hero_Death_00.mp3');
 }
@@ -302,6 +299,10 @@ function createPlatform (Platform, movable)
     Platform.body.setCollideWorldBounds(true);
     Platform.displayWidth = 350;
     Platform.body.setVelocityX(Phaser.Math.RND.sign()*PLATFORM_SPEED);
+    // adjust the collider box to be inline with the platform sprite
+    // see with config.physics.arcade.debug = true
+    Platform.body.setSize(400, Platform.getBounds().height-15);
+    Platform.body.setOffset(5, 0);
 }
 
 // callback to execute when bomb is touched
