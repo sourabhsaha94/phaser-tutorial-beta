@@ -37,6 +37,9 @@ var jump = false;
 var JUMP_TIMER = 0;
 var GOD_MODE = false;
 var SLOW_TIME = false;
+var GOD_MODE_STAR_PRESENT = false;
+var SLOW_TIME_STAR_PRESENT = false;
+var SUPER_STAR_PRESENT = false;
 
 
 // preloads the assets with key-value pairing
@@ -148,6 +151,11 @@ function create ()
     SLOW_TIME = false;
     GOD_MODE = false;
 
+// reset star variables
+    GOD_MODE_STAR_PRESENT = false;
+    SLOW_TIME_STAR_PRESENT = false;
+    SUPER_STAR_PRESENT = false;
+
 // cue music
     background_sound = this.sound.add('background');
     background_sound.play({ volume: 0.5, loop: true});
@@ -158,7 +166,7 @@ function create ()
 
 function worldCollideCallback (gameObject, up, down, left, right)
 {
-    if(down)
+    if(down && !GOD_MODE)
     {
         gameObject.world.scene.physics.pause();
         gameObject.gameObject.setTint(0xff0000);
@@ -166,6 +174,10 @@ function worldCollideCallback (gameObject, up, down, left, right)
         gameOver = true;
         death_sound.play({volume: 0.5});
         addScoreToLeaderBoard(score);
+    }
+    else if(down && GOD_MODE)
+    {
+        gameObject.gameObject.body.velocity.y = -PLAYER_VELOCITY_Y;
     }
 }
 
@@ -188,15 +200,24 @@ function collectStar (player, star)
     if(!GOD_MODE && star.getData("powerUp") === "GOD_MODE")
     {
         enableGodMode(this);
+        GOD_MODE_STAR_PRESENT = false;
+        star.setData("powerUp","");
+        star.clearTint();
     }
     else if(!SLOW_TIME && star.getData("powerUp") === "SLOW_TIME")
     {
         slowTime(this);
+        SLOW_TIME_STAR_PRESENT = false;
+        star.setData("powerUp","");
+        star.clearTint();
     }
 
     if (star.getData("powerUp") === "SUPER_STAR")
     {
         score += 20;
+        SUPER_STAR_PRESENT = false;
+        star.setData("powerUp","");
+        star.clearTint();
     }
 
     score += 10;
@@ -213,6 +234,7 @@ function collectStar (player, star)
         {    
             disableGodMode();
         }
+
         stars.children.iterate(function (child) {
             child.enableBody(true, child.x, 0, true,true);
             createStar(child, this);
@@ -248,21 +270,24 @@ function createStar (Star, context)
 
     let powerUpProbability = Phaser.Math.RND.integerInRange(1,25);
 
-    if (powerUpProbability === 5)
+    if (powerUpProbability % 5 === 0 && !SLOW_TIME_STAR_PRESENT)
     {
         Star.setTint(GREEN_TINT);
         Star.setData("powerUp","SLOW_TIME");
+        SLOW_TIME_STAR_PRESENT = true;
     }
-    else if (powerUpProbability === 6)
+    else if (powerUpProbability % 6 === 0 && !GOD_MODE_STAR_PRESENT)
     {
         Star.setTint(RED_TINT);
         Star.setData("powerUp","GOD_MODE");
+        GOD_MODE_STAR_PRESENT = true;
     }
-    else if (powerUpProbability === 7)
+    else if (powerUpProbability % 7 === 0 && !SUPER_STAR_PRESENT)
     {
         Star.setTint(BLACK_TINT);
         Star.setData("powerUp","SUPER_STAR");
         Star.setVelocity(Phaser.Math.RND.sign()*300);
+        SUPER_STAR_PRESENT = true;
         context.time.delayedCall(10000, disableSuperStar, null, context);
     }
 }
@@ -298,7 +323,7 @@ function enableGodMode (context)
     GOD_MODE = true;
     player.setTint(GOLDEN_TINT);
     bombs.children.iterate(function (child){
-        child.setAlpha(0.2);
+        child.setAlpha(0.3);
     });
     context.time.delayedCall(5000, disableGodMode);
 }
