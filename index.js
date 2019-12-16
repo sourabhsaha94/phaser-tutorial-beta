@@ -32,7 +32,6 @@ var PLAYER_START_X = 400;
 var PLAYER_START_Y = 500;
 var PLAYER_GRAVITY_Y = 1000;
 var PLATFORM_SPEED = 100;
-var PLATFORM_SPEED_SLOW = 10;
 var jump = false;
 var JUMP_TIMER = 0;
 var GOD_MODE = false;
@@ -46,7 +45,7 @@ var SUPER_STAR_PRESENT = false;
 function preload ()
 {
     this.load.image('sky','./assets/sky.png');
-    this.load.image('ground','./assets/platform.png');
+    this.load.image('ground','./assets/brown_platform.png');
     this.load.image('star','./assets/star.png');
     this.load.image('bomb','./assets/bomb.png');
     this.load.spritesheet('dude','./assets/dude.png',
@@ -138,7 +137,7 @@ function create ()
     gameOver = false;
 
     $.ajax({
-        url: "https://keyvalue.immanuel.co/api/KeyVal/GetValue/337gu3nb/globalScore",
+        url: "https://keyvalue.immanuel.co/api/KeyVal/GetValue/"+SCORE_BUCKET_SECRET_KEY+"/globalScore",
         type: "GET",
         success: updateGlobalScore,
         error: function (error) {
@@ -428,7 +427,7 @@ function addScoreToLeaderBoard (Score)
     {
         globalScore = score;
         $.ajax({
-            url: "https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/337gu3nb/globalScore/" + globalScore,
+            url: "https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/"+SCORE_BUCKET_SECRET_KEY+"/globalScore/" + globalScore,
             type: "POST",
             success: function (data) {
                 console.log ("Updated successfully");
