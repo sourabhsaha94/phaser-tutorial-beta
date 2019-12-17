@@ -123,6 +123,12 @@ function create ()
         duration: 5000,
         paused: true,
         repeat: 0,
+        onUpdate: function() {
+            if (SLOW_TIME){
+                timerText.setText(timerTween.getValue());
+            }
+        },
+        onUpdateScope: this,
         onComplete: normalTime,
         onCompleteScope: this
     });
@@ -240,14 +246,7 @@ function collectStar (player, star)
         {
             normalTime();
         }
-        // if (GOD_MODE)
-        // {    
-        //     GOD_MODE = false;
-        //     player.clearTint();
-        //     bombs.children.iterate(function(child){
-        //         child.setAlpha(1);
-        //     })
-        // }
+
         stars.children.iterate(function (child) {
             child.enableBody(true, child.x, 0, true,true);
             createStar(child);
@@ -556,9 +555,5 @@ function update ()
     {   
         background_sound.stop();
         scoreText.setText('Final Score is ' + score + ' Press Any Key to Restart\t' + 'Global Highscore: ' + globalScore);
-    }
-
-    if (SLOW_TIME){
-        timerText.setText(timerTween.getValue());
     }
 }
