@@ -24,7 +24,7 @@ const BLACK_TINT = 0x000000;
 
 var background_sound, jump_sound, collectStar_sound, death_sound;
 var game = new Phaser.Game(config);
-var score = 0, previousScore = 0, globalScore = 0, scoreText;
+var score = 0, previousScore = 0, globalScore = 0, scoreText, timerText;
 var gameOver;
 var PLAYER_VELOCITY_X = 250;
 var PLAYER_VELOCITY_Y = 500;
@@ -34,12 +34,9 @@ var PLAYER_GRAVITY_Y = 1000;
 var PLATFORM_SPEED = 100;
 var jump = false;
 var JUMP_TIMER = 0;
+var specialStarTimer;
 var GOD_MODE = false;
 var SLOW_TIME = false;
-var GOD_MODE_STAR_PRESENT = false;
-var SLOW_TIME_STAR_PRESENT = false;
-var SUPER_STAR_PRESENT = false;
-
 
 // preloads the assets with key-value pairing
 function preload ()
@@ -79,9 +76,12 @@ function create ()
         repeat: 11,
         setXY: { x: 12, y: 0, stepX:70 }
     });
+
     stars.children.iterate(function (child) {
-        createStar(child, this);
+        createStar(child);
     }, this);
+
+    specialStars = this.physics.add.group();
 
 // bomb
     bombs = this.physics.add.group();
@@ -116,6 +116,17 @@ function create ()
         repeat: -1
     });
 
+// tween
+    timerTween = this.tweens.addCounter({
+        from: 5,
+        to: 0,
+        duration: 5000,
+        paused: true,
+        repeat: 0,
+        onComplete: normalTime,
+        onCompleteScope: this
+    });
+
 // colliders
     this.physics.add.collider(player,platforms, matchPlatformSpeed, null, this);
     this.physics.add.collider(stars, platforms);
@@ -133,6 +144,9 @@ function create ()
     scoreText = this.add.text(16, 16, 'Score: 0\nCollect the starts and avoid the Bombs!', {fontSize: '18px', fill: '#000'});
     gameOver = false;
 
+// timer
+    timerText = this.add.text(700, 16, '', {fontSize: '32px', fill: '#000'});
+
     $.ajax({
         url: "https://keyvalue.immanuel.co/api/KeyVal/GetValue/"+SCORE_BUCKET_SECRET_KEY+"/globalScore",
         type: "GET",
@@ -147,17 +161,21 @@ function create ()
     SLOW_TIME = false;
     GOD_MODE = false;
 
-// reset star variables
-    GOD_MODE_STAR_PRESENT = false;
-    SLOW_TIME_STAR_PRESENT = false;
-    SUPER_STAR_PRESENT = false;
-
 // cue music
     background_sound = this.sound.add('background');
     background_sound.play({ volume: 0.5, loop: true});
     collectStar_sound = this.sound.add('collectStarSound');
     jump_sound = this.sound.add('jumpSound2');
     death_sound = this.sound.add('heroDeathSound');
+
+// create random star per level
+    specialStarTimer = this.time.addEvent({
+        delay: 8000,
+        callback: createSpecialStar,
+        callbackScope: this,
+        loop: true
+    });
+    specialStarTimer.paused = false;
 }
 
 function worldCollideCallback (gameObject, up, down, left, right)
@@ -170,6 +188,9 @@ function worldCollideCallback (gameObject, up, down, left, right)
         gameOver = true;
         death_sound.play({volume: 0.5});
         addScoreToLeaderBoard(score);
+        specialStarTimer.paused = true;
+        timerTween.remove();
+        timerText.destroy();
     }
     else if(down && GOD_MODE)
     {
@@ -193,27 +214,20 @@ function collectStar (player, star)
 {
     star.disableBody(true, true);
     collectStar_sound.play({volume: 0.4});   
+
     if(!GOD_MODE && star.getData("powerUp") === "GOD_MODE")
     {
         enableGodMode(this);
-        GOD_MODE_STAR_PRESENT = false;
-        star.setData("powerUp","");
-        star.clearTint();
     }
     else if(!SLOW_TIME && star.getData("powerUp") === "SLOW_TIME")
     {
+        specialStarTimer.paused = true;
         slowTime(this);
-        SLOW_TIME_STAR_PRESENT = false;
-        star.setData("powerUp","");
-        star.clearTint();
     }
 
     if (star.getData("powerUp") === "SUPER_STAR")
     {
         score += 20;
-        SUPER_STAR_PRESENT = false;
-        star.setData("powerUp","");
-        star.clearTint();
     }
 
     score += 10;
@@ -226,14 +240,17 @@ function collectStar (player, star)
         {
             normalTime();
         }
-        if (GOD_MODE)
-        {    
-            disableGodMode();
-        }
-
+        // if (GOD_MODE)
+        // {    
+        //     GOD_MODE = false;
+        //     player.clearTint();
+        //     bombs.children.iterate(function(child){
+        //         child.setAlpha(1);
+        //     })
+        // }
         stars.children.iterate(function (child) {
             child.enableBody(true, child.x, 0, true,true);
-            createStar(child, this);
+            createStar(child);
         }, this);
         createBomb(player);
     }
@@ -248,46 +265,72 @@ function matchPlatformSpeed (player, platform)
 // helper function to create bomb
 function createBomb (Player)
 {
-    var x = (Player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0,400);
-    var bomb = bombs.create(x, 16, 'bomb');
+    var x = (Player.x < 400) ? Phaser.Math.Between(700, 800) : Phaser.Math.Between(0,100);
+    var y = (Player.y < 300) ? Phaser.Math.Between(700, 800) : Phaser.Math.Between(0,100);
+    var bomb = bombs.create(x, y, 'bomb');
+    bomb.setDisplaySize(20,20);
     bomb.body.allowGravity = false;
     bomb.setBounce(0.9);
     bomb.setCollideWorldBounds(true);
     bomb.setVelocity(Phaser.Math.RND.sign()*Phaser.Math.RND.integerInRange(100,200));
+    if(GOD_MODE){
+        bomb.setAlpha(0.3);
+    }
 }
 
 // helper function to create star
-function createStar (Star, context)
+function createStar (Star)
 {
     Star.body.allowGravity = false;
     Star.setVelocity(Phaser.Math.RND.sign()*Phaser.Math.RND.integerInRange(100,200));
     Star.setBounce(0.9);
     Star.setCollideWorldBounds(true);
+}
 
-    let powerUpProbability = Phaser.Math.RND.integerInRange(1,25);
+// callback to create special star
+function createSpecialStar ()
+{
+    var specialStar = specialStars.create(Phaser.Math.RND.integerInRange(10,700),Phaser.Math.RND.integerInRange(5,50),'star');
+    specialStar.body.allowGravity = false;
+    specialStar.setVelocity(Phaser.Math.RND.sign()*Phaser.Math.RND.integerInRange(100,200));
+    specialStar.setBounce(0.9);
+    specialStar.setCollideWorldBounds(true);
+    this.physics.add.collider(platforms, specialStar);
+    this.physics.add.overlap(player, specialStar, collectStar, null, this);
 
-    if (powerUpProbability % 5 === 0 && !SLOW_TIME_STAR_PRESENT)
-    {
-        Star.setTint(GREEN_TINT);
-        Star.setData("powerUp","SLOW_TIME");
-        SLOW_TIME_STAR_PRESENT = true;
+    let powerUpProbability = Phaser.Math.RND.integerInRange(1,3);
+
+    switch(powerUpProbability){
+        case 1:
+            specialStar.setTint(GREEN_TINT);
+            specialStar.setData("powerUp","SLOW_TIME");
+        break;
+        case 2:
+            specialStar.setTint(RED_TINT);
+            specialStar.setData("powerUp","GOD_MODE");
+        break;
+        case 3:
+            specialStar.setTint(BLACK_TINT);
+            specialStar.setData("powerUp","SUPER_STAR");
+            specialStar.setVelocity(Phaser.Math.RND.sign()*300);
+        break;
     }
-    else if (powerUpProbability % 6 === 0 && !GOD_MODE_STAR_PRESENT)
-    {
-        Star.setTint(RED_TINT);
-        Star.setData("powerUp","GOD_MODE");
-        GOD_MODE_STAR_PRESENT = true;
-    }
-    else if (powerUpProbability % 7 === 0 && !SUPER_STAR_PRESENT)
-    {
-        Star.setTint(BLACK_TINT);
-        Star.setData("powerUp","SUPER_STAR");
-        Star.setVelocity(Phaser.Math.RND.sign()*300);
-        SUPER_STAR_PRESENT = true;
-        let callbackArgs = [];
-        callbackArgs.push(Star);
-        context.time.delayedCall(10000, disableSuperStar, callbackArgs, context);
-    }
+
+    var tween = this.tweens.add({
+        targets: specialStar,
+        paused: false,
+        callbackScope: this,
+        delay: 7000,
+        duration: 3000,
+        ease: 'Elastic',
+        yoyo: false,
+        alpha: { from: 1, to: 0},
+        onComplete: function() {
+            tween.remove();
+            specialStar.disableBody(true,true);
+        },
+        onCompleteScope: this
+    });
 }
 
 // helper function to create moving platform
@@ -316,6 +359,9 @@ function hitBomb (player, bomb)
         gameOver = true;
         death_sound.play({volume: 0.5});
         addScoreToLeaderBoard(score);
+        specialStarTimer.paused = true;
+        timerTween.remove();
+        timerText.destroy();
     }
 }
 
@@ -323,20 +369,26 @@ function hitBomb (player, bomb)
 function enableGodMode (context)
 {
     GOD_MODE = true;
+    let playerTint = player.tintTopLeft;
     player.setTint(GOLDEN_TINT);
     bombs.children.iterate(function (child){
         child.setAlpha(0.3);
     });
-    context.time.delayedCall(5000, disableGodMode);
-}
-
-// helper function to disable god mode
-function disableGodMode ()
-{
-    GOD_MODE = false;
-    player.clearTint();
-    bombs.children.iterate(function (child){
-        child.clearAlpha();
+    var tweenGodMode = context.tweens.add({
+        targets: player,
+        paused: false,
+        delay: 7000,
+        duration: 3000,
+        ease: 'Elastic',
+        tint: { from: GOLDEN_TINT, to: playerTint},
+        onComplete: function() {
+            GOD_MODE = false;
+            tweenGodMode.remove();
+            bombs.children.iterate(function (child){
+                child.clearAlpha();
+            });
+        },
+        onCompleteScope: this
     });
 }
 
@@ -363,9 +415,15 @@ function slowTime (context)
         child.body.velocity.x /= 5;
         child.body.velocity.y /= 5;
     });
+
+    specialStars.children.iterate(function (child) {
+        child.setData("slowDown",true);
+        child.body.velocity.x /= 5;
+        child.body.velocity.y /= 5;
+    });
     
     background_sound.setRate(0.5);
-    context.time.delayedCall(5000, normalTime);
+    timerTween.play();
 }
 
 // helper function to normal time
@@ -400,6 +458,18 @@ function normalTime ()
         child.setData("slowDown",false);
     });
 
+    specialStars.children.iterate(function (child) {
+        if(child.getData("slowDown"))
+        {
+            child.body.velocity.x *= 5;
+            child.body.velocity.y *= 5;
+        }
+        child.setData("slowDown",false);
+    });
+
+    timerText.setText('');
+    timerTween.stop();
+    specialStarTimer.paused = false;
     background_sound.setRate(1);
 }
 
@@ -483,8 +553,12 @@ function update ()
     }          
 
     if (gameOver === true)
-    {
+    {   
         background_sound.stop();
         scoreText.setText('Final Score is ' + score + ' Press Any Key to Restart\t' + 'Global Highscore: ' + globalScore);
+    }
+
+    if (SLOW_TIME){
+        timerText.setText(timerTween.getValue());
     }
 }
